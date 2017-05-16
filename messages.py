@@ -1,0 +1,5 @@
+UI_LOAD = "Load"
+UI_PLAY = "Play ..."
+ERROR = "Error"
+ERR_NO_CONNECTION = "Can't connect to DeviantArt ..."
+ERR_INVALID_URL = "This does not look like a DeviantArt URL"

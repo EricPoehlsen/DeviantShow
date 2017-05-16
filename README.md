@@ -1,4 +1,6 @@
 # DeviantShow
+***by Eric Pöhlsen***
+
 Until 2016 DeviantArt.com featured a flash based slideshow on its website called sitback. 
 Some time in fall 2016 this feature was gone, unfortunatly, as I'd like to mention. 
 To be honest, that slideshow was not really good, there was no random slideshow for example.

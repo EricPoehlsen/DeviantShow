@@ -30,7 +30,7 @@ Beside the standard library you will need the following libraries:
 
 ### Windows stand-alone
 The Windows stand-alone version of this program can be obtained from 
-[here ...](https://www.eric-poehlsen.de/deviantshow/ds.zip)  
+***[here ...](https://www.eric-poehlsen.de/deviantshow/ds.zip)***  
 Just extract the ZIP-File to any conveniant location and execute `ds.exe`.
 
 Please note that this is a 64bit executable and will only run on 64bit versions of Windows!

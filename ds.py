@@ -14,10 +14,10 @@ import webbrowser
 import messages as M
 from requests.certs import where as findcert
 
-# those are needed by py2exe
-import requests.packages.urllib3
-import queue
-import lxml._elementpath
+# those are only needed for py2exe conversion
+# import requests.packages.urllib3
+# import queue
+# import lxml._elementpath
 
 
 class App(tk.Frame):
@@ -200,8 +200,6 @@ class App(tk.Frame):
             rss = M.RSS_BASE + variant + ":" + user
             if len(elements) > 3:
                 rss += "/" + elements[2]
-
-        print(rss)
 
         # display statusinfo
         info = self.createInfoImage(text=M.UI_BUILD_GALLERY)
@@ -592,11 +590,37 @@ class App(tk.Frame):
 
         return ImageTk.PhotoImage(img)
 
-    def createInfoImage(self, text):
-        """ Creates the loading library info ... """
-        font_size = self.ini.getint("CONFIG", "font_size")
+    def createInfoImage(
+            self,
+            text,
+            width=None,
+            height=None,
+            color=None,
+            font_size=None
+    ):
+        """ Creates an informative centric text image ...
+        
+        Args:
+            text (str): the text to display 
+            width (int): width in pixel (default: self.width)
+            height (int): height in pixel (default: self.height)
+            color (str): color string (default: foreground from config)
+            font_size (int): font size (default: font_size from config)
+            
+        Returns:
+            ImageTk.PhotoImage: the image
+        """
 
-        img = Image.new('RGBA', (self.width, self.height), (0, 0, 0, 0))
+        if not font_size:
+            font_size = self.ini.getint("CONFIG", "font_size")
+        if not width:
+            width = self.width
+        if not height:
+            height = self.height
+        if not color:
+            color = self.ini["CONFIG"]["text_color"]
+
+        img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
         font = ImageFont.truetype(
             font=self.ini["CONFIG"]["font_file"],
             size=font_size
@@ -604,8 +628,8 @@ class App(tk.Frame):
 
         draw = ImageDraw.Draw(img)
         info_width, info_height = draw.textsize(text, font)
-        x = int(self.width / 2 - info_width / 2)
-        y = int(self.height / 2 - info_height / 2)
+        x = int(width / 2 - info_width / 2)
+        y = int(height / 2 - info_height / 2)
         draw.text(
             (x, y),
             text=text,
@@ -621,7 +645,7 @@ class App(tk.Frame):
         draw.text(
             (x, y),
             text=text,
-            fill=self.ini["CONFIG"]["text_color"],
+            fill=color,
             font=font,
             align="center"
         )
@@ -629,7 +653,70 @@ class App(tk.Frame):
         return ImageTk.PhotoImage(img)
 
     def showAbout(self, event=None):
-        pass
+        window = tk.Toplevel(self)
+        window.title(M.UI_ABOUT)
+        name_img = self.createInfoImage(
+            text=M.UI_ABOUT_NAME,
+            width=300,
+            height=50,
+            font_size=30,
+            color="#66aaff"
+        )
+        name = tk.Label(
+            window,
+            image=name_img,
+            background="#aaaaaa",
+        )
+        name.image=name_img
+        name.pack(fill=tk.X, expand=1)
+        tk.Label(
+            window,
+            text=M.UI_ABOUT_AUTHOR,
+            font="Arial 12"
+        ).pack()
+        tk.Label(
+            window,
+            text=M.UI_ABOUT_USE,
+            font="Arial 10"
+        ).pack()
+        da_url = tk.Label(
+            window,
+            text=M.UI_ABOUT_DA_URL,
+            font="Arial 10",
+            foreground="#0000ff"
+        )
+        da_url.bind("<Button-1>", lambda e:
+            webbrowser.open_new(M.UI_ABOUT_DA_URL)
+        )
+        da_url.pack()
+        tk.Label(
+            window,
+            text=M.UI_ABOUT_GITHUB,
+            font="Arial 10"
+        ).pack()
+        git_url = tk.Label(
+            window,
+            text=M.UI_ABOUT_GITHUB_URL,
+            font="Arial 10",
+            foreground="#0000ff"
+        )
+        git_url.bind("<Button-1>", lambda e:
+            webbrowser.open_new(M.UI_ABOUT_GITHUB_URL)
+        )
+        git_url.pack()
+        tk.Label(window, text=" ", font="Arial 10").pack()
+        close = tk.Button(
+            window,
+            text=M.UI_ABOUT_CLOSE,
+            command=window.destroy
+        )
+        close.pack()
+
+        # place it
+        window.geometry("350x300+{x}+{y}".format(
+            x=int(self.winfo_rootx() + self.width / 2 - 175),
+            y=int(self.winfo_rooty() + self.height / 2 - 150),
+        ))
 
     def exportConfig(self, event=None):
         """ Export the default config """

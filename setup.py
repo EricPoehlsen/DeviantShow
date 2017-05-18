@@ -20,9 +20,9 @@ for dir in dirs:
         if os.path.isfile(dir+"/"+file): file_list.append(dir+"/"+file)
     data_files.append((dir,file_list))
 """
-data_files.append(("downloads",[]))
-data_files.append(("fonts", ["hh_samuel.ttf"]))
-data_files.append(("", ["README.md, cacert.pem"]))
+data_files.append(("downloads", []))
+data_files.append(("fonts", ["fonts/hh_samuel.ttf"]))
+data_files.append(("", ["README.md", "cacert.pem"]))
     
 setup(
     name='DeviantShow',
@@ -32,6 +32,6 @@ setup(
     author_email='eric@eric-poehlsen.de',
     url='https://www.github.com/EricPoehsen/DeviantShow',
     install_requires=["Pillow", "lxml", "requests"],
-    console=['main.py'],
+    console=['ds.py'],
     data_files=data_files
 )

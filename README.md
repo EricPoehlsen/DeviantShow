@@ -1,12 +1,12 @@
 # DeviantShow
 ***by Eric Pöhlsen***  
 
-This program is a *web-scraper* that let's you watch DeviantArt.com galleries and favourites collections as slideshow.
-There has been a similar feature on DeviantArt, called SitBack, that was implemented in Flash. 
+This program let's you watch DeviantArt.com galleries and favourites collections as slideshow.
+There has been a similar feature on DeviantArt, called SitBack that was implemented in Flash. 
 This slideshow feature has been discontinued by DeviantArt, unfortunatly, as I'd like to mention.
 
-To be honest, that slideshow was not really good, there was no random slideshow for example.
-But that was still better than no slideshow feature at all. 
+SitBack was a rather rudimentary slideshow solution. It only allowed sequential viewing.
+And it always started at the beginning of the gallery. But that was still better than no slideshow feature at all. 
  
 Please note that neither am I, nor is this software, in any way affiliated or endorsed by DeviantArt.com.
 
@@ -177,15 +177,15 @@ appropriate RSS from which the image relevant URLs are than retrieved.
 This program uses HTTPS encrypted requests to exchange data with the DeviantArt.com servers. 
 
 #### Will I get into trouble using this tool?
-I honestly hope not. In my personal opinion using this tool is not violating the DeviantArt Terms of Service.
+If you use this tool as intended it is, so is my understanding, complient with the DeviantArt Terms of Services.
 The RSS feed is provided as a publicly available service. The images will only be downloaded as needed, not in bulk.
 If you do not delete the contents of the downloads folder, the images should be only downloaded once.
-This program also does not hide it's requests to the Server in any way. 
+This saves bandwidth for you and for DeviantArt. This program also does not hide it's requests to the Server in any way. 
 It identifies itself as *DeviantShow RSS Reader* and *DeviantShow ImageLoader* respectively.  
 
 #### Isn't this like using an AdBlocker?
-Yes, it does the same thing as an AdBlocker, you will not see ads. 
-So if you'd like to support DeviantArt financially and use this -
+Yes, it does the same thing as an AdBlocker, you will not see ads when using the slideshow. 
+So if you'd like to support DeviantArt financially and use this tool -
 consider getting a DeviantArt Core Membership.
 
 #### Can I use the fullscreen mode on a secondary screen?

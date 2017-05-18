@@ -117,6 +117,8 @@ class App(tk.Frame):
         # the main tk instance
         self.master = master
         self.master.title(M.UI_TITLE)
+
+        # creating all key bindings ...
         self.master.bind("<Configure>", self.resize)
         self.master.bind("<Right>", self.showNext)
         self.master.bind("<Left>", self.showPrevious)
@@ -202,21 +204,15 @@ class App(tk.Frame):
 
         # display statusinfo
         info = self.createInfoImage(text=M.UI_BUILD_GALLERY)
-
-        self.img_canvas.create_image(
-            0,0,
-            image=info,
-            anchor=tk.NW
-        )
-
+        self.img_canvas.create_image(0, 0, image=info, anchor=tk.NW)
         self.img_canvas.info = info
-
         self.update()
 
+        # get the data and construct the playlist
         self.image_data = self.readGallery(rss, arguments)
         self.playlist = list(range(len(self.image_data)))
 
-        # start
+        # start slideshow
         self.nextImage()
 
     def readGallery(self, url, arguments=""):
@@ -245,7 +241,6 @@ class App(tk.Frame):
 
         for iteration in range(self.gallery_limit):
             rss_url = url + "&offset="+str(offset)
-            # set
             try:
                 rss_feed = requests.get(
                     rss_url,
@@ -290,25 +285,27 @@ class App(tk.Frame):
                     message=M.ERR_NO_CONNECTION,
                     master=self
                 )
-
-            # we are done, no more entries
-            if i < 59:
-                break
+                i = 0
 
             offset += i
+
+            # are we done yet?
+            if i < 59:
+                break
 
         return media_info
 
     def nextImage(self):
         """ Display next image in the playlist """
+
         if not self.image_data:
             return
-        else:
-            if self.current >= len(self.image_data):
-                self.current = 0
-            self.loadImage(self.image_data[self.playlist[self.current]])
-            self.current += 1
-            self.timer = self.after(self.interval, self.nextImage)
+
+        if self.current >= len(self.image_data):
+            self.current = 0
+        self.loadImage(self.image_data[self.playlist[self.current]])
+        self.current += 1
+        self.timer = self.after(self.interval, self.nextImage)
 
     def loadImage(self, resource_data):
         """ this retrieves the actual image and displays it on the canvas
@@ -317,7 +314,7 @@ class App(tk.Frame):
             resource_data (dict): the image resource data 
         """
 
-        # create local filename
+        # construct the local filename
         img_url = resource_data["img_url"]
         path = self.ini["CONFIG"]["path"]
         if not path.endswith("/"):
@@ -325,10 +322,17 @@ class App(tk.Frame):
         filename = path + img_url.split("/")[-1]
         image = None
 
-        # load locally stored image from disk or retrieve from web
         if self.nsfw is False and resource_data["rating"] == "adult":
-            pass
+            # Oups ... - don't serve mature content ...
+            nsfw = self.createInfoImage(text=M.UI_NSFW_INFO)
+            self.img_canvas.create_image(
+                0, 0,
+                image=nsfw,
+                anchor=tk.NW
+            )
+            self.img_canvas.nsfw = nsfw
 
+        # load locally stored image from disk or retrieve from web
         elif os.path.isfile(filename):
             image = Image.open(filename)
         else:
@@ -346,16 +350,8 @@ class App(tk.Frame):
         self.img_canvas.delete(tk.ALL)
         self.img_canvas.image = None
 
-        if image is None:
-            nsfw = self.createInfoImage(text=M.UI_NSFW_INFO)
-            self.img_canvas.create_image(
-                0, 0,
-                image=nsfw,
-                anchor=tk.NW
-            )
-            self.img_canvas.nsfw = nsfw
-
-        else:
+        # draw the new image
+        if image is not None:
             # scaling the image for the screen
             img_ratio = image.width / image.height
             new_height = self.height
@@ -376,17 +372,16 @@ class App(tk.Frame):
             )
             self.img_canvas.image = photo
 
-        # add credits ...
+        # display credits ...
         if self.credits is True:
-            back = self.createCreditsImage(resource_data)
-
+            img_info = self.createCreditsImage(resource_data)
             self.img_canvas.create_image(
                 0, self.height,
-                image=back,
+                image=img_info,
                 anchor=tk.SW
             )
 
-            self.img_canvas.bg = back
+            self.img_canvas.img_info = img_info
 
     def pause(self, event):
         """ pauses and unpauses the slideshow"""

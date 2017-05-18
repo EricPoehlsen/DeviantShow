@@ -143,6 +143,10 @@ Use it however you like. I'd only like to point out that just changing the autho
 This license applies to this software only, not to the content you are able to access with it. 
 All artwork you can view with this program is copyrighted and licensed as specified by its respective owners. 
 
+#### Third party contents
+This program comes bundled with the font *H.H. Samuel* by [Fernando Haro](http://www.defharo.com). 
+The font is available under the SIL Open font license.  
+
 ## FAQ
 Okay technically no one has asked any of those questions, yet. 
 I decided to answer them proactively.

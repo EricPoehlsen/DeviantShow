@@ -5,6 +5,7 @@ import tkinter.messagebox as tkmb
 import requests
 from urllib.request import Request, build_opener
 import os.path
+import sys
 from lxml import etree as et
 from PIL import ImageTk, Image, ImageDraw, ImageFont, ImageFilter,\
     PngImagePlugin, JpegImagePlugin, GifImagePlugin
@@ -517,8 +518,11 @@ class App(tk.Frame):
     def resize(self, event):
         """ Event handler tracking the available canvas size"""
 
-        self.width = self.img_canvas.winfo_width()
-        self.height = self.img_canvas.winfo_height()
+        try:
+            self.width = self.img_canvas.winfo_width()
+            self.height = self.img_canvas.winfo_height()
+        except tk.TclError:
+            pass
 
     def visitDA(self, event=None):
         """ opens webbrowser to access deviation page """
@@ -672,24 +676,60 @@ class App(tk.Frame):
         self.after(500, self.panicSwitch, var)
 
 
-def main(args):
-    window = tk.Tk()
-    app = App(window)
+def checkPath(path):
+    """ check if path exists or can be created 
+    
+    Args:
+        path (str): relative or absolute path
+        
+    Returns:
+        int: 0 okay, -1 error
+    """
 
-    # after init overwrite defaults or config with values from args!
-    if args.limit:
-        app.gallery_limit = args.limit
-    if args.interval:
-        app.interval = args.interval * 1000
-        app.interval_var.set(str(args.interval))
-    if args.nsfw:
-        app.nsfw = args.nsfw
-    if args.credits is False:
-        app.credits = args.credits
-    app.pack(fill=tk.BOTH, expand=1)
+    if os.path.exists(path):
+        if not os.path.isdir(path):
+            return -1
+        else:
+            return 0
+    else:
+        try:
+            os.mkdir(path)
+            return 0
+        except FileNotFoundError:
+            return -1
+
+
+def dontStart(window, app):
+    """ handle critical error, path can't be created! """
+
+    path = app.ini["CONFIG"]["path"]
+    app.destroy()
+    error_msg = M.ERR_INVALID_PATH.format(path=path)
+    window.overrideredirect(True)
+    window.geometry("1x1+0+0")
+
+    clicked = tkmb.showerror(title=M.ERROR, message=error_msg, master=window)
+    if clicked:
+        if sys.platform == "win32":
+            error = 3
+        else:
+            error = 2
+        print(error_msg)
+        sys.exit(error)
+
     window.mainloop()
 
-if __name__ == "__main__":
+
+def parseArguments(*args):
+    """ handles command-line arguments 
+    
+    Args:
+        whatever is coming in 
+    
+    Returns:
+        parsed arguments
+
+    """
 
     parser = argparse.ArgumentParser(description=M.ARGPARSE_DESCRIPTION)
     parser.add_argument(
@@ -724,5 +764,38 @@ if __name__ == "__main__":
         help=M.ARGPARSE_CREDITS
     )
 
-    args = parser.parse_args()
-    main(args)
+    return parser.parse_args()
+
+
+def main(*args):
+    """ main - initiates the program """
+
+    args = parseArguments(*args)
+
+    # initialize the tk instance and the app
+    window = tk.Tk()
+    app = App(window)
+
+    # after init overwrite defaults or config with values from args!
+    if args.path:
+        app.ini["CONFIG"]["path"] = args.path
+    if args.limit:
+        app.gallery_limit = args.limit
+    if args.interval:
+        app.interval = args.interval * 1000
+        app.interval_var.set(str(args.interval))
+    if args.nsfw:
+        app.nsfw = args.nsfw
+    if args.credits is False:
+        app.credits = args.credits
+
+    pathcheck = checkPath(app.ini["CONFIG"]["path"])
+    if pathcheck == -1:
+        dontStart(window, app)
+
+    app.pack(fill=tk.BOTH, expand=1)
+    window.mainloop()
+
+# execute!
+if __name__ == "__main__":
+    main(*sys.argv)

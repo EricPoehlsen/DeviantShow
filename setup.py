@@ -8,7 +8,6 @@ from distutils.core import setup
 import py2exe
 import os
 
-
 #building data_files lists ... 
 data_files = []
 
@@ -25,4 +24,14 @@ data_files.append(("downloads",[]))
 data_files.append(("fonts", ["hh_samuel.ttf"]))
 data_files.append(("", ["README.md, cacert.pem"]))
     
-setup(console=['main.py'], data_files=data_files)
+setup(
+    name='DeviantShow',
+    version='0.1',
+    description='A slideshow for DeviantArt.com',
+    author='Eric Pöhlsen',
+    author_email='eric@eric-poehlsen.de',
+    url='https://www.github.com/EricPoehsen/DeviantShow',
+    install_requires=["Pillow", "lxml", "requests"],
+    console=['main.py'],
+    data_files=data_files
+)

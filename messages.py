@@ -26,6 +26,9 @@ UA_RSSLOADER = "DeviantShow RSS Reader/0.1"
 ERROR = "Error"
 ERR_NO_CONNECTION = "Can't connect to DeviantArt ..."
 ERR_INVALID_URL = "This does not look like a DeviantArt URL"
+ERR_INVALID_PATH = "Specified path '{path}' is not valid "\
+                   "and can't be created automatically!\n"\
+                   "Please provide a valid --path argument!"
 
 TERM_TITLE = "Terminal"
 

@@ -1,3 +1,7 @@
+# exclude some stuff ... 
+# certificate
+cacert.pem
+config.ini
 # exclude config
 config.py
 .idea/

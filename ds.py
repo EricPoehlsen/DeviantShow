@@ -1,21 +1,22 @@
 import argparse
+import configparser
 import tkinter as tk
 import tkinter.messagebox as tkmb
 import requests
 from urllib.request import Request, build_opener
 import os.path
 from lxml import etree as et
-from PIL import ImageTk, Image
+from PIL import ImageTk, Image, ImageDraw, ImageFont, ImageFilter,\
+    PngImagePlugin, JpegImagePlugin, GifImagePlugin
 import random
 import webbrowser
 import messages as M
+from requests.certs import where as findcert
 
-
-"""
-Next steps ...
-
-* adding
-"""
+# those are needed by py2exe
+import requests.packages.urllib3
+import queue
+import lxml._elementpath
 
 
 class App(tk.Frame):
@@ -36,22 +37,34 @@ class App(tk.Frame):
         self.image_data = []
         self.playlist = []
         self.current = 0
-        self.gallery_limit = 4
-        self.interval = 10000
+        self.gallery_limit = 0
+        self.interval = 0
         self.mode = "sequential"
         self.interval_var = tk.StringVar()
         self.timer = None
         self.nsfw = False
+        self.credits = True
+        self.cert = findcert()  # set to "cacert.pem" for py2exe
 
-        self.config(background="#000000")
+        # now the config ...
+        self.ini = configparser.ConfigParser()
+        self.loadConfig()
+
+        # building the interface ...
+        self.config(background=self.ini["CONFIG"]["background"])
         self.columnconfigure(0, weight=100)
         self.rowconfigure(0, weight=1)
         self.rowconfigure(1, weight=100)
 
         # creating the menu bar
         self.menuframe = tk.Frame(self)
+        url_label = tk.Label(
+            self.menuframe,
+            text=M.UI_URL,
+        )
+        url_label.pack(side=tk.LEFT)
         self.url_bar = tk.Entry(self.menuframe)
-        self.url_bar.pack(side=tk.LEFT, fill=tk.X, expand=1)
+        self.url_bar.pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
         play_button = tk.Button(
             self.menuframe,
             text=M.UI_PLAY,
@@ -59,25 +72,33 @@ class App(tk.Frame):
         )
         play_button.pack(side=tk.LEFT)
 
-        mode_label=tk.Label(
-            self.menuframe,
-            text=M.UI_MODE
-        )
-        mode_label.pack(side=tk.LEFT)
         self.mode_button = tk.Button(
             self.menuframe,
             text=M.UI_MODE_SEQ,
             command=self.nextMode
         )
         self.mode_button.pack(side=tk.LEFT)
-        interval_entry = tk.Entry(
+        interval_label = tk.Label(
+            self.menuframe,
+            text=M.UI_TIMER,
+            font="Arial 15"
+        )
+        interval_label.pack(side=tk.LEFT)
+        self.interval_entry = tk.Entry(
             self.menuframe,
             width=4,
-            textvariable=self.interval_var
+            textvariable=self.interval_var,
         )
-        interval_entry.pack(side=tk.LEFT)
+        self.interval_entry.pack(side=tk.LEFT, fill=tk.Y)
         self.interval_var.set(str(self.interval // 1000))
         self.interval_var.trace("w", lambda n, e, m: self.intervalChanged())
+
+        about_button = tk.Button(
+            self.menuframe,
+            text=M.UI_ABOUT,
+            command=self.showAbout
+        )
+        about_button.pack(side=tk.LEFT)
 
         self.menuframe.grid(row=0, column=0, sticky=tk.NSEW)
 
@@ -86,29 +107,62 @@ class App(tk.Frame):
             self,
             width=300,
             height=300,
-            background="#000000",
+            background=self.ini["CONFIG"]["background"],
             borderwidth=0,
             highlightthickness=0
         )
-        self.img_canvas.bind("<Button-1>", self.visitDA)
+        self.img_canvas.bind("<Double-Button-1>", self.visitDA)
         self.img_canvas.grid(row=1, column=0, sticky=tk.NSEW)
 
         # the main tk instance
         self.master = master
         self.master.title(M.UI_TITLE)
         self.master.bind("<Configure>", self.resize)
-        self.master.bind("<F12>", self.panicMode)
         self.master.bind("<Right>", self.showNext)
         self.master.bind("<Left>", self.showPrevious)
+        self.master.bind("<Up>", self.setInterval)
+        self.master.bind("<Down>", self.setInterval)
+        self.master.bind("<space>", self.pause)
+        self.master.bind("<Return>", self.fetchGallery)
+        self.master.bind("<F5>", self.sequentialMode)
+        self.master.bind("<F6>", self.reversedMode)
+        self.master.bind("<F7>", self.randomMode)
         self.master.bind("<F11>", self.toggleFullScreen)
+        self.master.bind("<F12>", self.panicMode)
+        self.master.bind("<c>", self.exportConfig)
 
-    def fetchGallery(self):
+    def loadConfig(self):
+        """ read config and assign to variables as necessary """
+
+        # defaults
+        self.ini["CONFIG"] = {
+            "interval": "10",
+            "credits": "true",
+            "limit": "3",
+            "nsfw": "false",
+            "path": "downloads",
+            "background": "#000000",
+            "text_color": "#dddddd",
+            "font_file": "fonts/hh_samuel.ttf",
+            "font_size": "30"
+        }
+
+        # read local config
+        self.ini.read(["config.ini"])
+
+        self.nsfw = self.ini.getboolean("CONFIG", "nsfw")
+        self.credits = self.ini.getboolean("CONFIG", "credits")
+        self.gallery_limit = self.ini.getint("CONFIG", "limit")
+        interval = self.ini.getint("CONFIG", "interval")
+        self.interval = interval * 1000
+        self.interval_var.set(str(interval))
+
+    def fetchGallery(self, event=None):
         """ read the given url and get the appropriate rss """
 
         url = self.url_bar.get()
         # do not reload the same gallery
         if url == self.gallery_url:
-            print("already loaded ...")
             self.nextImage()
             return
         else:
@@ -126,7 +180,6 @@ class App(tk.Frame):
 
         arguments = ""
         if "?" in url:
-
             url, arguments = url.split("?")
 
         # handle a 'search'
@@ -137,7 +190,6 @@ class App(tk.Frame):
         else:
             url = url.split("//")[-1]
             elements = url.split("/")
-            print(len(elements))
             user = elements[0].split(".")[0]
             variant = elements[1]
             if variant == "favourites":
@@ -147,14 +199,27 @@ class App(tk.Frame):
                 rss += "/" + elements[2]
 
         print(rss)
+
+        # display statusinfo
+        info = self.createInfoImage(text=M.UI_BUILD_GALLERY)
+
+        self.img_canvas.create_image(
+            0,0,
+            image=info,
+            anchor=tk.NW
+        )
+
+        self.img_canvas.info = info
+
+        self.update()
+
         self.image_data = self.readGallery(rss, arguments)
         self.playlist = list(range(len(self.image_data)))
-        print(len(self.playlist))
 
         # start
         self.nextImage()
 
-    def readGallery(self, url, arguments):
+    def readGallery(self, url, arguments=""):
         """ retrieves the image urls (and metadata) from the rss 
 
         Args: 
@@ -178,11 +243,15 @@ class App(tk.Frame):
                 if name == "offset":
                     offset = int(value)
 
-        print ("Start @:", offset)
         for iteration in range(self.gallery_limit):
             rss_url = url + "&offset="+str(offset)
+            # set
             try:
-                rss_feed = requests.get(rss_url, headers=headers)
+                rss_feed = requests.get(
+                    rss_url,
+                    headers=headers,
+                    verify=self.cert
+                )
                 tree = et.fromstring(rss_feed.content)
                 items = tree.findall(".//item")
                 for i, item in enumerate(items):
@@ -214,15 +283,15 @@ class App(tk.Frame):
                     data["rating"] = rating
                     media_info.append(data)
 
-            except requests.ConnectionError:
+            except requests.ConnectionError as e:
+                print(e)
                 error = tkmb.showerror(
                     title=M.ERROR,
                     message=M.ERR_NO_CONNECTION,
                     master=self
                 )
 
-            print("This round:", i)
-
+            # we are done, no more entries
             if i < 59:
                 break
 
@@ -250,12 +319,16 @@ class App(tk.Frame):
 
         # create local filename
         img_url = resource_data["img_url"]
-        filename = "downloads/" + img_url.split("/")[-1]
+        path = self.ini["CONFIG"]["path"]
+        if not path.endswith("/"):
+            path += os.sep
+        filename = path + img_url.split("/")[-1]
         image = None
 
         # load locally stored image from disk or retrieve from web
         if self.nsfw is False and resource_data["rating"] == "adult":
             pass
+
         elif os.path.isfile(filename):
             image = Image.open(filename)
         else:
@@ -274,13 +347,13 @@ class App(tk.Frame):
         self.img_canvas.image = None
 
         if image is None:
-            # add credits ...
-            self.img_canvas.create_text(
-                int(self.width/2),
-                int(self.height/2),
-                text=M.UI_NSFW_INFO,
-                fill="#ff0000"
+            nsfw = self.createInfoImage(text=M.UI_NSFW_INFO)
+            self.img_canvas.create_image(
+                0, 0,
+                image=nsfw,
+                anchor=tk.NW
             )
+            self.img_canvas.nsfw = nsfw
 
         else:
             # scaling the image for the screen
@@ -304,32 +377,55 @@ class App(tk.Frame):
             self.img_canvas.image = photo
 
         # add credits ...
-        self.img_canvas.create_text(
-            2, 2,
-            text=resource_data["title"] + " by " + resource_data["author"],
-            anchor=tk.NW,
-            fill="#cccccc"
-        )
+        if self.credits is True:
+            back = self.createCreditsImage(resource_data)
 
-        # page numbers ...
-        image_num = str(self.playlist[self.current] + 1)
-        total_num = str(len(self.playlist))
-        self.img_canvas.create_text(
-            self.width - 2,
-            self.height - 2,
-            text=image_num + " / " + total_num,
-            anchor=tk.SE,
-            fill="#cccccc"
-        )
+            self.img_canvas.create_image(
+                0, self.height,
+                image=back,
+                anchor=tk.SW
+            )
 
+            self.img_canvas.bg = back
+
+    def pause(self, event):
+        """ pauses and unpauses the slideshow"""
+
+        if not self.playlist:
+            return
+
+        if self.timer:
+            self.after_cancel(self.timer)
+            self.timer = 0
+
+            # display info
+            info = self.createInfoImage(text=M.UI_PAUSED)
+            item_id = self.img_canvas.create_image(
+                0, 0,
+                image=info,
+                anchor=tk.NW
+            )
+            self.img_canvas.info = info
+            self.update()
+
+            self.after(2500, self.img_canvas.delete, item_id)
+
+        else:
+            self.nextImage()
 
     def showNext(self, event):
         """ Cancel timer - go to next image in playlist """
+
+        if not self.playlist:
+            return
         self.after_cancel(self.timer)
         self.nextImage()
 
     def showPrevious(self, event):
         """ Cancel timer - go to previous image in playlist """
+
+        if not self.playlist:
+            return
         self.after_cancel(self.timer)
         self.current -= 2
         if self.current < 0:
@@ -370,22 +466,41 @@ class App(tk.Frame):
         if self.playlist:
             self.mode = "reversed"
             self.mode_button.config(text=M.UI_MODE_REV)
+            self.current -= 2
+            if self.current < 0:
+                self.current = len(self.playlist) - 1
             current = self.playlist[self.current]
             self.playlist.sort()
             self.playlist.reverse()
             self.current = self.playlist.index(current)
 
     def intervalChanged(self):
+        """ Interval change based on changes of """
+
+        # we only care if this was done with an active entrie field
+        if self.master.focus_get() != self.interval_entry:
+            return
+
         try:
             interval_text = self.interval_var.get()
 
-            interval_float = float(interval_text)
-            if interval_float < 3:
+            interval_int = int(interval_text)
+            if interval_int < 3:
                 self.interval = 3000
             else:
-                self.interval = int(1000 * interval_float)
+                self.interval = int(1000 * interval_int)
         except ValueError:
             pass
+
+    def setInterval(self, event):
+        """ Setting the interval with up and down keys ... """
+
+        if event.keysym == "Up":
+            self.interval += 1000
+            self.interval_var.set(self.interval // 1000)
+        if event.keysym == "Down" and self.interval > 3000:
+            self.interval -= 1000
+            self.interval_var.set(self.interval // 1000)
 
     def toggleFullScreen(self, event=None):
         if self.fullscreen:
@@ -406,17 +521,123 @@ class App(tk.Frame):
 
     def resize(self, event):
         """ Event handler tracking the available canvas size"""
+
         self.width = self.img_canvas.winfo_width()
         self.height = self.img_canvas.winfo_height()
 
     def visitDA(self, event=None):
         """ opens webbrowser to access deviation page """
+
         try:
             cur_data = self.image_data[self.playlist[self.current]]
             url = cur_data["link"]
             webbrowser.open_new(url)
         except IndexError:
             pass
+
+    def createCreditsImage(self, resource_data):
+        """ create the info (credits, image number) 
+        
+        Args: 
+            resource_data (dict): image resource data
+            
+        Returns:
+            ImageTk.Photoimage: The image object
+
+        """
+
+        font_size = self.ini.getint("CONFIG", "font_size")
+        img_height = int(1.5 * font_size)
+        img = Image.new('RGBA', (self.width, img_height), (0, 0, 0, 0))
+
+        font = ImageFont.truetype(
+            font=self.ini["CONFIG"]["font_file"],
+            size=self.ini.getint("CONFIG", "font_size")
+        )
+        title = resource_data["title"] + " by " + resource_data["author"]
+
+        draw = ImageDraw.Draw(img)
+        draw.text(
+            (5, 5),
+            text=title,
+            fill="#000000",  # self.ini["CONFIG"]["text_color"],
+            font=font,
+        )
+        image_num = str(self.playlist[self.current] + 1)
+        total_num = str(len(self.playlist))
+        page = image_num + " / " + total_num
+        page_width, page_height = draw.textsize(page, font)
+
+        draw.text(
+            (self.width - 5 - page_width, 5),
+            text=page,
+            fill="#000000",  # self.ini["CONFIG"]["text_color"],
+            font=font,
+        )
+
+        img = img.filter(ImageFilter.GaussianBlur(3))
+
+        draw = ImageDraw.Draw(img)
+        draw.text(
+            (5, 5),
+            text=resource_data["title"] + " by " + resource_data["author"],
+            fill=self.ini["CONFIG"]["text_color"],
+            font=font,
+        )
+        draw.text(
+            (self.width - 5 - page_width, 5),
+            text=page,
+            fill=self.ini["CONFIG"]["text_color"],
+            font=font,
+        )
+
+        return ImageTk.PhotoImage(img)
+
+    def createInfoImage(self, text):
+        """ Creates the loading library info ... """
+        font_size = self.ini.getint("CONFIG", "font_size")
+
+        img = Image.new('RGBA', (self.width, self.height), (0, 0, 0, 0))
+        font = ImageFont.truetype(
+            font=self.ini["CONFIG"]["font_file"],
+            size=font_size
+        )
+
+        draw = ImageDraw.Draw(img)
+        info_width, info_height = draw.textsize(text, font)
+        x = int(self.width / 2 - info_width / 2)
+        y = int(self.height / 2 - info_height / 2)
+        draw.text(
+            (x, y),
+            text=text,
+            fill="#000000",
+            font=font,
+            align="center"
+
+        )
+
+        img = img.filter(ImageFilter.GaussianBlur(3))
+
+        draw = ImageDraw.Draw(img)
+        draw.text(
+            (x, y),
+            text=text,
+            fill=self.ini["CONFIG"]["text_color"],
+            font=font,
+            align="center"
+        )
+
+        return ImageTk.PhotoImage(img)
+
+    def showAbout(self, event=None):
+        pass
+
+    def exportConfig(self, event=None):
+        """ Export the default config """
+
+        if not os.path.isfile("config.ini"):
+            with open("config.ini", 'w') as configfile:
+                self.ini.write(configfile)
 
     def panicMode(self, event):
         import os
@@ -459,30 +680,53 @@ class App(tk.Frame):
 def main(args):
     window = tk.Tk()
     app = App(window)
-    app.gallery_limit = args.limit
-    app.interval = args.interval * 1000
-    app.interval_var.set(str(args.interval))
-    app.nsfw = args.nsfw
+
+    # after init overwrite defaults or config with values from args!
+    if args.limit:
+        app.gallery_limit = args.limit
+    if args.interval:
+        app.interval = args.interval * 1000
+        app.interval_var.set(str(args.interval))
+    if args.nsfw:
+        app.nsfw = args.nsfw
+    if args.credits is False:
+        app.credits = args.credits
     app.pack(fill=tk.BOTH, expand=1)
     window.mainloop()
 
-
 if __name__ == "__main__":
+
     parser = argparse.ArgumentParser(description=M.ARGPARSE_DESCRIPTION)
     parser.add_argument(
-        "-i", "--interval",
+        "--interval",
         type=int,
-        default=10,
+        dest="interval",
+        # default=10,
         help=M.ARGPARSE_INTERVAL)
     parser.add_argument(
-        "-l", "--limit",
+        "--limit",
         type=int,
-        default=4,
+        dest="limit",
+        # default=4,
         help=M.ARGPARSE_GALLERYLIMIT)
     parser.add_argument(
+        "--path",
+        dest="path",
+        type=str,
+        # default="downloads",
+        help=M.ARGPARSE_PATH)
+    parser.add_argument(
         "--nsfw",
-        action="store_true",
+        action="store_const",
+        const=True,
         help=M.ARGPARSE_NSFW
+    )
+    parser.add_argument(
+        "--no-credits",
+        action="store_const",
+        dest="credits",
+        const=False,
+        help=M.ARGPARSE_CREDITS
     )
 
     args = parser.parse_args()

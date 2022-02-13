@@ -12,7 +12,6 @@ from PIL import ImageTk, Image, ImageDraw, ImageFont, ImageFilter,\
 import random
 import webbrowser
 import messages as M
-from requests.certs import where as findcert
 
 # those are only needed for py2exe conversion
 # import requests.packages.urllib3
@@ -30,8 +29,8 @@ class App(tk.Frame):
 
     def __init__(self, master):
         super().__init__(master=master)
-        self.width = 0
-        self.height = 0
+        self.width = 500
+        self.height = 500
         self.fullscreen = False
         self.stored_geometry = ""
         self.gallery_url = ""
@@ -45,7 +44,6 @@ class App(tk.Frame):
         self.timer = None
         self.nsfw = False
         self.credits = True
-        self.cert = findcert()  # set to "cacert.pem" for py2exe
 
         # now the config ...
         self.ini = configparser.ConfigParser()
@@ -244,7 +242,7 @@ class App(tk.Frame):
                 rss_feed = requests.get(
                     rss_url,
                     headers=headers,
-                    verify=self.cert
+                    verify=True
                 )
                 tree = et.fromstring(rss_feed.content)
                 items = tree.findall(".//item")
@@ -318,7 +316,11 @@ class App(tk.Frame):
         path = self.ini["CONFIG"]["path"]
         if not path.endswith("/"):
             path += os.sep
-        filename = path + img_url.split("/")[-1]
+
+        img_name = img_url.split("/")[-1]
+        img_name = img_name.split("?")[0]
+        print(img_name)
+        filename = path + img_name
         image = None
 
         if self.nsfw is False and resource_data["rating"] == "adult":
@@ -885,4 +887,5 @@ def main(*args):
 
 # execute!
 if __name__ == "__main__":
+    print("TEST")
     main(*sys.argv)

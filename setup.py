@@ -22,7 +22,7 @@ for dir in dirs:
 """
 data_files.append(("downloads", []))
 data_files.append(("fonts", ["fonts/hh_samuel.ttf"]))
-data_files.append(("", ["README.md", "cacert.pem"]))
+data_files.append(("", ["README.md"]))
     
 setup(
     name='DeviantShow',
@@ -31,7 +31,7 @@ setup(
     author='Eric Pöhlsen',
     author_email='eric@eric-poehlsen.de',
     url='https://www.github.com/EricPoehsen/DeviantShow',
-    install_requires=["Pillow", "lxml", "requests"],
+    install_requires=["Pillow", "lxml", "lxml.etree", "requests"],
     console=['ds.py'],
     data_files=data_files
 )

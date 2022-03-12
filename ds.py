@@ -13,6 +13,9 @@ import random
 import webbrowser
 import messages as M
 
+#dummy for standalone setup
+from lxml import _elementpath as _dummy
+
 # those are only needed for py2exe conversion
 # import requests.packages.urllib3
 # import queue
@@ -191,13 +194,13 @@ class App(tk.Frame):
         else:
             url = url.split("//")[-1]
             elements = url.split("/")
-            user = elements[0].split(".")[0]
-            variant = elements[1]
+            user = elements[1].split(".")[0]
+            variant = elements[2]
             if variant == "favourites":
                 variant = "favby"
             rss = M.RSS_BASE + variant + ":" + user
             if len(elements) > 3:
-                rss += "/" + elements[2]
+                rss += "/" + elements[3]
 
         # display statusinfo
         info = self.createInfoImage(text=M.UI_BUILD_GALLERY)
@@ -283,7 +286,6 @@ class App(tk.Frame):
                     master=self
                 )
                 i = 0
-
             offset += i
 
             # are we done yet?

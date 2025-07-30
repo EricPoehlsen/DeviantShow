@@ -364,7 +364,7 @@ class App(tk.Frame):
                 new_height = new_width / img_ratio
             new_width = int(new_width)
             new_height = int(new_height)
-            image = image.resize((new_width, new_height), Image.ANTIALIAS)
+            image = image.resize((new_width, new_height), Image.LANCZOS)
             photo = ImageTk.PhotoImage(image)
 
             # draw current image
@@ -567,7 +567,8 @@ class App(tk.Frame):
         image_num = str(self.playlist[self.current] + 1)
         total_num = str(len(self.playlist))
         page = image_num + " / " + total_num
-        page_width, page_height = draw.textsize(page, font)
+        page_width = draw.textlength(page, font)
+        page_height = font.size
 
         draw.text(
             (self.width - 5 - page_width, 5),
@@ -631,7 +632,8 @@ class App(tk.Frame):
         )
 
         draw = ImageDraw.Draw(img)
-        info_width, info_height = draw.textsize(text, font)
+        info_width = draw.textlength(text, font)
+        info_height = font.size
         x = int(width / 2 - info_width / 2)
         y = int(height / 2 - info_height / 2)
         draw.text(

@@ -21,8 +21,7 @@ UI_NSFW_INFO = "This image was marked as\n" \
                "To display mature content start\n" \
                "DeviantShow with flag --nsfw "
 
-UI_BUILD_GALLERY = "Creating gallery links and indices\n"\
-                   "This might take a few moments ..."
+UI_BUILD_GALLERY = "Generating gallery links"
 
 
 RSS_BASE = "https://backend.deviantart.com/rss.xml?q="
